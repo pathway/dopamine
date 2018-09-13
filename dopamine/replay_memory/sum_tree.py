@@ -71,6 +71,9 @@ class SumTree(object):
     Raises:
       ValueError: If requested capacity is not positive.
     """
+    self.reset(capacity)
+
+  def reset(self,capacity):
     assert isinstance(capacity, int)
     if capacity <= 0:
       raise ValueError('Sum tree capacity should be positive. Got: {}'.

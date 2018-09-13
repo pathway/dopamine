@@ -163,6 +163,10 @@ class OutOfGraphReplayBuffer(object):
         [math.pow(self._gamma, n) for n in range(update_horizon)],
         dtype=np.float32)
 
+  def reset(self):
+    self._create_storage()
+    self.add_count=np_array(0)
+
   def _create_storage(self):
     """Creates the numpy arrays used to store transitions.
     """

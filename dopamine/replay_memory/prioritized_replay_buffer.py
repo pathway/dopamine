@@ -78,6 +78,10 @@ class OutOfGraphPrioritizedReplayBuffer(
         observation_dtype=observation_dtype)
 
     self.sum_tree = sum_tree.SumTree(replay_capacity)
+    self._replay_capacity = replay_capacity
+
+  def reset(self):
+      self.sum_tree.reset(self._replay_capacity)
 
   def get_add_args_signature(self):
     """The signature of the add function.
