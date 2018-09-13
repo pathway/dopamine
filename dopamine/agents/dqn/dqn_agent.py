@@ -142,6 +142,9 @@ class DQNAgent(object):
     self.training_steps = 0
     self.optimizer = optimizer
 
+    self._q_values_cache = []
+    self._q_values_dict = {}
+
     with tf.device(tf_device):
       # Create a placeholder for the state input to the DQN network.
       # The last axis indicates the number of consecutive frames stacked.
@@ -212,6 +215,7 @@ class DQNAgent(object):
     # using a deep network, but may affect performance with a linear
     # approximation scheme.
     self._q_argmax = tf.argmax(self._net_outputs.q_values, axis=1)[0]
+    self._q_values= self._net_outputs.q_values
 
     self._replay_net_outputs = self.online_convnet(self._replay.states)
     self._replay_next_target_net_outputs = self.target_convnet(
@@ -288,7 +292,7 @@ class DQNAgent(object):
       sync_qt_ops.append(w_target.assign(w_online, use_locking=True))
     return sync_qt_ops
 
-  def begin_episode(self, observation):
+  def begin_episode(self, observation, deterministic=False):
     """Returns the agent's first action for this episode.
 
     Args:
@@ -303,10 +307,10 @@ class DQNAgent(object):
     if not self.eval_mode:
       self._train_step()
 
-    self.action = self._select_action()
+    self.action = self._select_action(deterministic)
     return self.action
 
-  def step(self, reward, observation):
+  def step(self, reward, observation, deterministic=False):
     """Records the most recent transition and returns the agent's next action.
 
     We store the observation of the last time step since we want to store it
@@ -326,7 +330,7 @@ class DQNAgent(object):
       self._store_transition(self._last_observation, self.action, reward, False)
       self._train_step()
 
-    self.action = self._select_action()
+    self.action = self._select_action(deterministic)
     return self.action
 
   def end_episode(self, reward):
@@ -341,7 +345,32 @@ class DQNAgent(object):
     if not self.eval_mode:
       self._store_transition(self._observation, self.action, reward, True)
 
-  def _select_action(self):
+
+  def _select_action_deterministic(self):
+    #tf.Print(self._net_outputs, self.state)
+    #tf.Print(self._net_outputs.q_values)
+    #print('q_values:',q_values)
+    #print('q_values:',self._net_outputs.q_values)
+    res= self._sess.run([self._q_argmax,self._q_values], {self.state_ph: self.state})
+
+    self._q_values_cache=res[1][0]
+    #for idx, val in enumerate(self._q_values_cache):
+    self._q_values_dict = { 'stop': self._q_values_cache[0],
+          'lf': self._q_values_cache[1],
+          'dn': self._q_values_cache[2],
+          'lf': self._q_values_cache[3],
+          'rt': self._q_values_cache[4],
+          'bom': self._q_values_cache[5]
+          }
+    return res[0]
+
+  def _select_action_sample_delta(self):
+    # randomly return those within DELTA of max
+    # see self._q_values
+    #return self._sess.run(self._q_argmax, {self.state_ph: self.state})
+    pass
+
+  def _select_action(self, deterministic=False):
     """Select an action from the set of available actions.
 
     Chooses an action randomly with probability self._calculate_epsilon(), and
@@ -350,17 +379,22 @@ class DQNAgent(object):
     Returns:
        int, the selected action.
     """
-    epsilon = self.epsilon_eval if self.eval_mode else self.epsilon_fn(
+    if deterministic:
+      return self._select_action_deterministic()
+
+    self.epsilon_current = self.epsilon_eval if self.eval_mode else self.epsilon_fn(
         self.epsilon_decay_period,
         self.training_steps,
         self.min_replay_history,
         self.epsilon_train)
-    if random.random() <= epsilon:
+
+    #print('epsilon',self.epsilon_current)
+    if random.random() <= self.epsilon_current:
       # Choose a random action with probability epsilon.
       return random.randint(0, self.num_actions - 1)
     else:
-      # Choose the action with highest Q-value at the current state.
-      return self._sess.run(self._q_argmax, {self.state_ph: self.state})
+      return self._select_action_deterministic()
+
 
   def _train_step(self):
     """Runs a single training step.
