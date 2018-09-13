@@ -141,7 +141,7 @@ class OutOfGraphReplayBuffer(object):
     if isinstance(observation_shape, tuple):
       self._observation_shape = observation_shape
     else:
-      self._observation_shape = (observation_shape, observation_shape)
+      self._observation_shape = (observation_shape,)
     self._stack_size = stack_size
     self._state_shape = self._observation_shape + (self._stack_size,)
     self._replay_capacity = replay_capacity

@@ -145,7 +145,7 @@ class DQNAgent(object):
     with tf.device(tf_device):
       # Create a placeholder for the state input to the DQN network.
       # The last axis indicates the number of consecutive frames stacked.
-      state_shape = [1, OBSERVATION_SHAPE, OBSERVATION_SHAPE, STACK_SIZE]
+      state_shape = [1, OBSERVATION_SHAPE, STACK_SIZE]
       self.state = np.zeros(state_shape)
       self.state_ph = tf.placeholder(tf.uint8, state_shape, name='state_ph')
       self._replay = self._build_replay_buffer(use_staging)
@@ -393,10 +393,11 @@ class DQNAgent(object):
       observation: numpy array, an observation from the environment.
     """
     # Set current observation. Represents an 84 x 84 x 1 image frame.
-    self._observation = observation[:, :, 0]
+    self._observation = observation # [:] # RC HACK
+
     # Swap out the oldest frame with the current frame.
-    self.state = np.roll(self.state, -1, axis=3)
-    self.state[0, :, :, -1] = self._observation
+    self.state = np.roll(self.state, -1, axis=2)
+    self.state[0, :, -1] = self._observation
 
   def _store_transition(self, last_observation, action, reward, is_terminal):
     """Stores an experienced transition.
