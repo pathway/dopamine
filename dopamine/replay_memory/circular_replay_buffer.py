@@ -291,6 +291,9 @@ class OutOfGraphReplayBuffer(object):
     """Is the Replay Buffer empty?"""
     return self.add_count == 0
 
+  def get_stats(self):
+    return self.add_count , self._replay_capacity
+
   def is_full(self):
     """Is the Replay Buffer full?"""
     return self.add_count >= self._replay_capacity

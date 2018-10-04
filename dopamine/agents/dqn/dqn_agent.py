@@ -148,7 +148,14 @@ class DQNAgent(object):
     with tf.device(tf_device):
       # Create a placeholder for the state input to the DQN network.
       # The last axis indicates the number of consecutive frames stacked.
-      state_shape = [1, OBSERVATION_SHAPE, STACK_SIZE]
+      if not isinstance(OBSERVATION_SHAPE, tuple):
+        state_shape = [1, OBSERVATION_SHAPE, STACK_SIZE]
+      elif len(OBSERVATION_SHAPE) == 1:
+        state_shape = [1, OBSERVATION_SHAPE[0], STACK_SIZE]
+      elif len(OBSERVATION_SHAPE) == 2:
+        state_shape = [1, OBSERVATION_SHAPE[0], OBSERVATION_SHAPE[1], STACK_SIZE]
+      elif len(OBSERVATION_SHAPE)==3:
+        state_shape = [1, OBSERVATION_SHAPE[0], OBSERVATION_SHAPE[1], OBSERVATION_SHAPE[2], STACK_SIZE]
       self.state = np.zeros(state_shape)
       self.state_ph = tf.placeholder(tf.uint8, state_shape, name='state_ph')
       self._replay = self._build_replay_buffer(use_staging)
@@ -232,6 +239,7 @@ class DQNAgent(object):
       A WrapperReplayBuffer object.
     """
     return circular_replay_buffer.WrappedReplayBuffer(
+        batch_size=256,
         observation_shape=OBSERVATION_SHAPE,
         stack_size=STACK_SIZE,
         use_staging=use_staging,
@@ -431,7 +439,17 @@ class DQNAgent(object):
 
     # Swap out the oldest frame with the current frame.
     self.state = np.roll(self.state, -1, axis=2)
-    self.state[0, :, -1] = self._observation
+
+    if len(self.state.shape)==1:
+      self.state[0, :, -1] = self._observation
+    elif len(self.state.shape) == 2:
+      self.state[0, :, :, -1] = self._observation
+    elif len(self.state.shape)==3:
+      self.state[0, :, :, -1] = self._observation
+    elif len(self.state.shape)==4:
+      self.state[0, :, :, :, -1] = self._observation
+    elif len(self.state.shape)==5:
+      self.state[0, :, :, :, -1] = self._observation
 
   def _store_transition(self, last_observation, action, reward, is_terminal):
     """Stores an experienced transition.
